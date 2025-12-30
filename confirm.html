@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirming Email - LastCall</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            max-width: 400px;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .success {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        .error {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+        }
+        p {
+            margin: 10px 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .debug {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            font-size: 12px;
+            font-family: monospace;
+            text-align: left;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success">✓</div>
+        <h1>Confirming Your Email</h1>
+        <p>Redirecting to LastCall app...</p>
+        <div class="spinner"></div>
+        <div id="status"></div>
+        <div id="debug" class="debug" style="display: none;"></div>
+    </div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const debugDiv = document.getElementById('debug');
+
+        function log(message) {
+            console.log(message);
+            debugDiv.innerHTML += message + '<br>';
+        }
+
+        function showError(message) {
+            statusDiv.innerHTML = `<div class="error"><strong>Error:</strong> ${message}</div>`;
+            document.querySelector('.spinner').style.display = 'none';
+            debugDiv.style.display = 'block';
+        }
+
+        try {
+            // Get current URL
+            const currentUrl = window.location.href;
+            log('Current URL: ' + currentUrl);
+
+            // Parse URL parameters
+            const urlObj = new URL(currentUrl);
+            const params = new URLSearchParams(urlObj.search);
+
+            // Also check hash fragment (Supabase might send tokens there)
+            if (urlObj.hash) {
+                const hashParams = new URLSearchParams(urlObj.hash.substring(1));
+                hashParams.forEach((value, key) => {
+                    if (!params.has(key)) {
+                        params.set(key, value);
+                    }
+                });
+            }
+
+            // Extract token (could be 'token', 'token_hash', or 'access_token')
+            const token = params.get('token') || params.get('token_hash');
+            const type = params.get('type') || 'signup';
+            const access_token = params.get('access_token');
+            const refresh_token = params.get('refresh_token');
+
+            log('Token: ' + (token ? 'present' : 'missing'));
+            log('Type: ' + type);
+            log('Access token: ' + (access_token ? 'present' : 'missing'));
+            log('Refresh token: ' + (refresh_token ? 'present' : 'missing'));
+
+            // Build deep link based on what we have
+            let deepLink = 'lastcall://confirm';
+            const deepLinkParams = new URLSearchParams();
+
+            if (access_token && refresh_token) {
+                // Session tokens - pass them through
+                deepLinkParams.set('access_token', access_token);
+                deepLinkParams.set('refresh_token', refresh_token);
+                log('Using session tokens');
+            } else if (token) {
+                // Verification token - pass it through
+                deepLinkParams.set('token', token);
+                deepLinkParams.set('type', type);
+                log('Using verification token');
+            } else {
+                throw new Error('No token found in URL');
+            }
+
+            deepLink += '?' + deepLinkParams.toString();
+            log('Deep link: ' + deepLink);
+
+            // Redirect to app
+            statusDiv.innerHTML = '<p>Opening LastCall app...</p>';
+            setTimeout(() => {
+                window.location.href = deepLink;
+
+                // Fallback message if redirect doesn't work
+                setTimeout(() => {
+                    statusDiv.innerHTML = '<p>If the app didn\'t open, please make sure LastCall is installed.</p>';
+                }, 2000);
+            }, 500);
+
+        } catch (error) {
+            log('Error: ' + error.message);
+            showError(error.message);
+        }
+    </script>
+</body>
+</html>

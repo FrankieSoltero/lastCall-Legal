@@ -113,33 +113,30 @@
                 });
             }
 
-            // Extract token (could be 'token', 'token_hash', or 'access_token')
-            const token = params.get('token') || params.get('token_hash');
-            const type = params.get('type') || 'signup';
+            // Extract session tokens from URL (sent by Supabase after verification)
             const access_token = params.get('access_token');
             const refresh_token = params.get('refresh_token');
+            const error_code = params.get('error_code');
+            const error_description = params.get('error_description');
 
-            log('Token: ' + (token ? 'present' : 'missing'));
-            log('Type: ' + type);
             log('Access token: ' + (access_token ? 'present' : 'missing'));
             log('Refresh token: ' + (refresh_token ? 'present' : 'missing'));
 
-            // Build deep link based on what we have
+            if (error_code) {
+                throw new Error('Verification failed: ' + error_description);
+            }
+
+            // Build deep link with session tokens
             let deepLink = 'lastcall://confirm';
             const deepLinkParams = new URLSearchParams();
 
             if (access_token && refresh_token) {
-                // Session tokens - pass them through
+                // Session tokens from Supabase - pass them through
                 deepLinkParams.set('access_token', access_token);
                 deepLinkParams.set('refresh_token', refresh_token);
-                log('Using session tokens');
-            } else if (token) {
-                // Verification token - pass it through
-                deepLinkParams.set('token', token);
-                deepLinkParams.set('type', type);
-                log('Using verification token');
+                log('Session tokens found - redirecting to app');
             } else {
-                throw new Error('No token found in URL');
+                throw new Error('No session tokens found in URL. Make sure Supabase redirected correctly.');
             }
 
             deepLink += '?' + deepLinkParams.toString();

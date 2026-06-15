@@ -116,6 +116,7 @@
             // Extract session tokens from URL (sent by Supabase after verification)
             const access_token = params.get('access_token');
             const refresh_token = params.get('refresh_token');
+            const type = params.get('type'); // signup | recovery | magiclink | ...
             const error_code = params.get('error_code');
             const error_description = params.get('error_description');
 
@@ -134,6 +135,11 @@
                 // Session tokens from Supabase - pass them through
                 deepLinkParams.set('access_token', access_token);
                 deepLinkParams.set('refresh_token', refresh_token);
+                // Forward the link type so the app can route password-recovery
+                // links to the reset screen instead of the signed-in shell.
+                if (type) {
+                    deepLinkParams.set('type', type);
+                }
                 log('Session tokens found - redirecting to app');
             } else {
                 throw new Error('No session tokens found in URL. Make sure Supabase redirected correctly.');

@@ -83,13 +83,31 @@
         const statusDiv = document.getElementById('status');
         const debugDiv = document.getElementById('debug');
 
+        // SECURITY: never assign untrusted data to innerHTML. `message`,
+        // `currentUrl`, and `error_description` all derive from the URL
+        // (attacker-controllable), so everything user-facing is rendered via
+        // textContent / DOM nodes to prevent DOM-based XSS.
+        function setStatus(text) {
+            const p = document.createElement('p');
+            p.textContent = text;
+            statusDiv.replaceChildren(p);
+        }
+
         function log(message) {
             console.log(message);
-            debugDiv.innerHTML += message + '<br>';
+            const line = document.createElement('div');
+            line.textContent = message;
+            debugDiv.appendChild(line);
         }
 
         function showError(message) {
-            statusDiv.innerHTML = `<div class="error"><strong>Error:</strong> ${message}</div>`;
+            const box = document.createElement('div');
+            box.className = 'error';
+            const label = document.createElement('strong');
+            label.textContent = 'Error: ';
+            box.appendChild(label);
+            box.appendChild(document.createTextNode(message));
+            statusDiv.replaceChildren(box);
             document.querySelector('.spinner').style.display = 'none';
             debugDiv.style.display = 'block';
         }
@@ -149,13 +167,13 @@
             log('Deep link: ' + deepLink);
 
             // Redirect to app
-            statusDiv.innerHTML = '<p>Opening LastCall app...</p>';
+            setStatus('Opening LastCall app...');
             setTimeout(() => {
                 window.location.href = deepLink;
 
                 // Fallback message if redirect doesn't work
                 setTimeout(() => {
-                    statusDiv.innerHTML = '<p>If the app didn\'t open, please make sure LastCall is installed.</p>';
+                    setStatus("If the app didn't open, please make sure LastCall is installed.");
                 }, 2000);
             }, 500);
 
